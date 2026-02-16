@@ -132,10 +132,11 @@ class ChannelSwitcher(ModalScreen):
 
             # Display channels
             for channel in self.channels:
-                # Create container for this channel
+                # Create container for this channel and mount it first
                 container = Container(classes="channel-item", id=f"channel-{channel['id']}")
+                scroll.mount(container)
 
-                # Add channel name
+                # Now mount widgets to the mounted container
                 container.mount(Label(f"📺 {channel['title']}", classes="channel-name"))
 
                 # Add stats
@@ -147,9 +148,6 @@ class ChannelSwitcher(ModalScreen):
                     container.mount(Label(f"youtube.com/{channel['custom_url']}", classes="channel-url"))
                 else:
                     container.mount(Label(f"Channel ID: {channel['id'][:20]}...", classes="channel-url"))
-
-                # Mount container to scroll
-                scroll.mount(container)
 
         except YouTubeAPIError as e:
             scroll.remove_children()
