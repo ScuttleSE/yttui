@@ -198,23 +198,52 @@ class YouTubeApp(App):
 
     def action_add_account(self) -> None:
         """Add a new account."""
+        import logging
+        from pathlib import Path
+
+        # Setup debug logging
+        log_file = Path.home() / '.config' / 'yt-tui' / 'account_debug.log'
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(
+            filename=str(log_file),
+            level=logging.DEBUG,
+            format='%(asctime)s - %(message)s'
+        )
+        logger = logging.getLogger(__name__)
+
+        logger.info(f"=== ACTION ADD ACCOUNT ===")
+
         if not self.account_manager:
+            logger.error("No account manager available")
             return
 
         self.notify("Opening browser for authentication...")
+        logger.info("Notified user, calling authenticate_new_account...")
 
         try:
             result = self.account_manager.authenticate_new_account()
+            logger.info(f"authenticate_new_account returned: {result}")
+
             if result:
                 account, creds = result
+                logger.info(f"Got account: {account.email}, creds valid: {creds.valid}")
                 self.notify(f"Added account: {account.name}")
 
                 # Switch to new account
+                logger.info(f"Switching to account: {account.id}")
                 self.account_manager.switch_account(account.id)
+                logger.info("Calling action_reload_with_account...")
                 self.action_reload_with_account(account)
+                logger.info("action_reload_with_account completed")
             else:
+                logger.warning("authenticate_new_account returned None")
                 self.notify("Authentication cancelled", severity="warning")
+
+            logger.info("===================\n")
         except Exception as e:
+            logger.error(f"action_add_account failed: {type(e).__name__}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             self.notify(f"Failed to add account: {e}", severity="error")
 
     def action_reload_with_account(self, account) -> None:
