@@ -15,6 +15,7 @@ from ui.history import HistoryScreen
 from ui.playlists import PlaylistsScreen, PlaylistVideosScreen
 from ui.trending import TrendingScreen
 from ui.accounts import AccountSwitcher, AccountInfoWidget
+from ui.channels import ChannelSwitcher, ChannelInfoWidget
 
 
 class YouTubeApp(App):
@@ -40,13 +41,18 @@ class YouTubeApp(App):
     }
 
     #account-bar Static {
-        width: 100%;
+        width: auto;
         text-style: bold;
+        margin-right: 2;
     }
 
     #account-bar Static:hover {
         background: $accent;
         text-style: bold underline;
+    }
+
+    #account-bar {
+        layout: horizontal;
     }
 
     Footer {
@@ -111,6 +117,7 @@ class YouTubeApp(App):
         Binding("r", "refresh", "Refresh"),
         Binding("/", "search", "Search"),
         Binding("a", "switch_account", "Accounts"),
+        Binding("c", "view_channels", "Channels"),
         Binding("1", "switch_tab('search')", "Search", show=False),
         Binding("2", "switch_tab('trending')", "Trending", show=False),
         Binding("3", "switch_tab('subscriptions')", "Subscriptions", show=False),
@@ -123,7 +130,7 @@ class YouTubeApp(App):
         self.youtube = youtube_api
         self.account_manager = account_manager
         self.title = "YT-TUI - YouTube Terminal Client"
-        self.sub_title = "Tab: switch | Enter: play | /: search | a: accounts | q: quit"
+        self.sub_title = "Tab: switch | Enter: play | /: search | a: accounts | c: channels | q: quit"
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -133,6 +140,7 @@ class YouTubeApp(App):
         if self.account_manager:
             with Container(id="account-bar"):
                 yield AccountInfoWidget(self.account_manager)
+                yield ChannelInfoWidget(self.youtube)
 
         with TabbedContent(initial="search"):
             with TabPane("Search", id="search"):
@@ -236,8 +244,17 @@ class YouTubeApp(App):
             account_widget = self.query_one(AccountInfoWidget)
             account_widget.update_display()
 
+            # Update channel info widget
+            channel_widget = self.query_one(ChannelInfoWidget)
+            channel_widget.youtube = self.youtube
+            channel_widget.refresh_count()
+
             # Refresh current view
             self.action_refresh()
 
         except Exception as e:
             self.notify(f"Failed to switch account: {e}", severity="error")
+
+    def action_view_channels(self) -> None:
+        """View channels for current account."""
+        self.push_screen(ChannelSwitcher(self.youtube))

@@ -344,6 +344,45 @@ class YouTubeAPI:
                 raise YouTubeAPIError("API quota exceeded.")
             raise YouTubeAPIError(f"Failed to get trending videos: {e}")
 
+    def get_my_channels(self) -> List[Dict[str, Any]]:
+        """
+        Get all channels owned by the authenticated user.
+
+        Returns:
+            List of channel dictionaries with metadata
+        """
+        try:
+            request = self.service.channels().list(
+                part="snippet,contentDetails,statistics",
+                mine=True
+            )
+            response = request.execute()
+
+            channels = []
+            for item in response.get('items', []):
+                snippet = item['snippet']
+                statistics = item.get('statistics', {})
+
+                channels.append({
+                    'id': item['id'],
+                    'title': snippet['title'],
+                    'description': snippet.get('description', '')[:200],
+                    'custom_url': snippet.get('customUrl', ''),
+                    'thumbnail': snippet['thumbnails']['default']['url'],
+                    'subscriber_count': self._format_number(int(statistics.get('subscriberCount', 0))),
+                    'video_count': statistics.get('videoCount', 0),
+                    'view_count': self._format_number(int(statistics.get('viewCount', 0))),
+                    'published_at': self._parse_date(snippet['publishedAt']),
+                    'url': f"https://www.youtube.com/channel/{item['id']}"
+                })
+
+            return channels
+
+        except HttpError as e:
+            if e.resp.status == 403:
+                raise YouTubeAPIError("API quota exceeded or insufficient permissions.")
+            raise YouTubeAPIError(f"Failed to get channels: {e}")
+
     def _parse_video(self, item: Dict[str, Any]) -> Dict[str, Any]:
         """Parse video item from API response."""
         snippet = item['snippet']
