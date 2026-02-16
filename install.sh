@@ -88,10 +88,16 @@ echo ""
 if [ -f ~/.config/yt-tui/client_secret.json ]; then
     echo "✓ Found existing client_secret.json"
     echo ""
-    echo "You can now run: python main.py"
+    echo "You can now run the app:"
+    echo "  source venv/bin/activate"
+    echo "  python main.py"
     echo ""
 else
     echo "⚠️  client_secret.json not found"
     echo "Please follow the setup guide to obtain API credentials"
+    echo ""
+    echo "After obtaining credentials, run:"
+    echo "  source venv/bin/activate"
+    echo "  python main.py"
     echo ""
 fi

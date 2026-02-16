@@ -115,34 +115,38 @@ class ChannelSwitcher(ModalScreen):
             scroll.remove_children()
 
             if not self.channels:
-                with scroll:
-                    scroll.mount(Static("No channels found for this account.", classes="channel-stats"))
+                scroll.mount(Static("No channels found for this account.", classes="channel-stats"))
                 return
 
             # Display channels
             for channel in self.channels:
-                with scroll:
-                    with Container(classes="channel-item", id=f"channel-{channel['id']}"):
-                        scroll.mount(Label(f"📺 {channel['title']}", classes="channel-name"))
+                # Create container for this channel
+                container = Container(classes="channel-item", id=f"channel-{channel['id']}")
 
-                        stats = f"👥 {channel['subscriber_count']} subscribers • 🎥 {channel['video_count']} videos • 👁 {channel['view_count']} views"
-                        scroll.mount(Label(stats, classes="channel-stats"))
+                # Add channel name
+                container.mount(Label(f"📺 {channel['title']}", classes="channel-name"))
 
-                        if channel['custom_url']:
-                            scroll.mount(Label(f"youtube.com/{channel['custom_url']}", classes="channel-url"))
-                        else:
-                            scroll.mount(Label(f"Channel ID: {channel['id'][:20]}...", classes="channel-url"))
+                # Add stats
+                stats = f"👥 {channel['subscriber_count']} subscribers • 🎥 {channel['video_count']} videos • 👁 {channel['view_count']} views"
+                container.mount(Label(stats, classes="channel-stats"))
+
+                # Add URL
+                if channel['custom_url']:
+                    container.mount(Label(f"youtube.com/{channel['custom_url']}", classes="channel-url"))
+                else:
+                    container.mount(Label(f"Channel ID: {channel['id'][:20]}...", classes="channel-url"))
+
+                # Mount container to scroll
+                scroll.mount(container)
 
         except YouTubeAPIError as e:
             scroll = self.query_one("#channels-list", VerticalScroll)
             scroll.remove_children()
-            with scroll:
-                scroll.mount(Static(f"Error loading channels: {e}", classes="error"))
+            scroll.mount(Static(f"Error loading channels: {e}", classes="error"))
         except Exception as e:
             scroll = self.query_one("#channels-list", VerticalScroll)
             scroll.remove_children()
-            with scroll:
-                scroll.mount(Static(f"Unexpected error: {e}", classes="error"))
+            scroll.mount(Static(f"Unexpected error: {e}", classes="error"))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
