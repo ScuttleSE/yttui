@@ -167,13 +167,22 @@ class AccountManager:
 
             # Check if scopes match current requirements
             if creds and creds.scopes:
-                # Normalize scopes (remove openid if auto-added)
+                # Normalize scopes for comparison (Google may add/reorder scopes)
                 current_scopes = set(SCOPES)
-                token_scopes = set(creds.scopes) - {'openid'}
+                token_scopes = set(creds.scopes)
 
-                if token_scopes != current_scopes:
-                    print(f"Token scopes mismatch. Deleting old token...")
-                    print(f"  Expected: {sorted(current_scopes)}")
+                # Both should have the same scopes (allowing for Google's auto-additions)
+                # Check if all required scopes are present
+                required_scopes = {
+                    'https://www.googleapis.com/auth/youtube.readonly',
+                    'https://www.googleapis.com/auth/youtube.force-ssl',
+                    'https://www.googleapis.com/auth/userinfo.email',
+                    'https://www.googleapis.com/auth/userinfo.profile'
+                }
+
+                if not required_scopes.issubset(token_scopes):
+                    print(f"Token missing required scopes. Deleting old token...")
+                    print(f"  Required: {sorted(required_scopes)}")
                     print(f"  Got: {sorted(token_scopes)}")
                     # Delete incompatible token
                     token_path.unlink()
