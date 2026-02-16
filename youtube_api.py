@@ -355,6 +355,8 @@ class YouTubeAPI:
             channels = []
             page_token = None
 
+            print("DEBUG: Fetching channels with mine=True...")
+
             # Fetch all pages of owned channels
             while True:
                 request = self.service.channels().list(
@@ -365,9 +367,14 @@ class YouTubeAPI:
                 )
                 response = request.execute()
 
+                print(f"DEBUG: Got {len(response.get('items', []))} channels from mine=True")
+                print(f"DEBUG: Response has nextPageToken: {response.get('nextPageToken') is not None}")
+
                 for item in response.get('items', []):
                     snippet = item['snippet']
                     statistics = item.get('statistics', {})
+
+                    print(f"DEBUG: Found channel: {snippet['title']} (ID: {item['id']})")
 
                     channels.append({
                         'id': item['id'],
@@ -386,11 +393,11 @@ class YouTubeAPI:
                 if not page_token:
                     break
 
+            print(f"DEBUG: Total channels from mine=True: {len(channels)}")
+
             # Also try to get channels the user manages (brand channels, etc.)
-            # This requires checking channel memberships
             try:
-                # Get channels by looking at subscriptions management permissions
-                # Note: This is a workaround as there's no direct "managed channels" API
+                print("DEBUG: Trying managedByMe=True...")
                 mgmt_request = self.service.channels().list(
                     part="snippet,contentDetails,statistics",
                     managedByMe=True,
@@ -398,11 +405,16 @@ class YouTubeAPI:
                 )
                 mgmt_response = mgmt_request.execute()
 
+                print(f"DEBUG: Got {len(mgmt_response.get('items', []))} channels from managedByMe=True")
+
                 for item in mgmt_response.get('items', []):
-                    # Check if we already have this channel
                     channel_id = item['id']
+                    snippet = item['snippet']
+
+                    print(f"DEBUG: Found managed channel: {snippet['title']} (ID: {channel_id})")
+
+                    # Check if we already have this channel
                     if not any(ch['id'] == channel_id for ch in channels):
-                        snippet = item['snippet']
                         statistics = item.get('statistics', {})
 
                         channels.append({
@@ -417,10 +429,14 @@ class YouTubeAPI:
                             'published_at': self._parse_date(snippet['publishedAt']),
                             'url': f"https://www.youtube.com/channel/{item['id']}"
                         })
-            except:
+                    else:
+                        print(f"DEBUG: Channel {channel_id} already in list, skipping")
+            except Exception as e:
+                print(f"DEBUG: managedByMe failed: {e}")
                 # managedByMe might not be available for all accounts
                 pass
 
+            print(f"DEBUG: Final total channels: {len(channels)}")
             return channels
 
         except HttpError as e:
