@@ -107,16 +107,28 @@ class ChannelSwitcher(ModalScreen):
 
     def load_channels(self) -> None:
         """Load user's channels."""
+        scroll = self.query_one("#channels-list", VerticalScroll)
+
         try:
+            # Show loading message
+            scroll.remove_children()
+            scroll.mount(Static("Fetching channels from YouTube API...", classes="loading"))
+
             self.channels = self.youtube.get_my_channels()
 
             # Clear loading message
-            scroll = self.query_one("#channels-list", VerticalScroll)
             scroll.remove_children()
 
             if not self.channels:
                 scroll.mount(Static("No channels found for this account.", classes="channel-stats"))
+                scroll.mount(Static("", classes="channel-stats"))
+                scroll.mount(Static("Note: Every Google account should have at least one YouTube channel.", classes="channel-stats"))
+                scroll.mount(Static("Try creating a channel at youtube.com if you don't have one.", classes="channel-stats"))
                 return
+
+            # Display success message
+            scroll.mount(Static(f"Found {len(self.channels)} channel(s):", classes="channel-stats"))
+            scroll.mount(Static("", classes="channel-stats"))
 
             # Display channels
             for channel in self.channels:
@@ -140,13 +152,24 @@ class ChannelSwitcher(ModalScreen):
                 scroll.mount(container)
 
         except YouTubeAPIError as e:
-            scroll = self.query_one("#channels-list", VerticalScroll)
             scroll.remove_children()
-            scroll.mount(Static(f"Error loading channels: {e}", classes="error"))
+            scroll.mount(Static(f"YouTube API Error:", classes="error"))
+            scroll.mount(Static(f"{str(e)}", classes="channel-stats"))
+            scroll.mount(Static("", classes="channel-stats"))
+            scroll.mount(Static("This may be due to:", classes="channel-stats"))
+            scroll.mount(Static("• API quota exceeded", classes="channel-stats"))
+            scroll.mount(Static("• Network connection issue", classes="channel-stats"))
+            scroll.mount(Static("• Authentication problem", classes="channel-stats"))
         except Exception as e:
-            scroll = self.query_one("#channels-list", VerticalScroll)
             scroll.remove_children()
-            scroll.mount(Static(f"Unexpected error: {e}", classes="error"))
+            scroll.mount(Static(f"Unexpected error:", classes="error"))
+            scroll.mount(Static(f"{str(e)}", classes="channel-stats"))
+            scroll.mount(Static("", classes="channel-stats"))
+            import traceback
+            error_details = traceback.format_exc()
+            for line in error_details.split('\n')[:10]:  # First 10 lines
+                if line.strip():
+                    scroll.mount(Static(line[:80], classes="channel-stats"))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
