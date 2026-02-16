@@ -93,10 +93,10 @@ class SearchScreen(Static):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection - open video in browser."""
-        if not self.videos or event.row_key.value is None:
+        if not self.videos:
             return
 
-        row_index = event.row_key.value
+        row_index = event.cursor_row
         if row_index >= len(self.videos):
             return
 

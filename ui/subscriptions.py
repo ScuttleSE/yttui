@@ -134,10 +134,7 @@ class SubscriptionsScreen(Static):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection."""
-        if event.row_key.value is None:
-            return
-
-        row_index = event.row_key.value
+        row_index = event.cursor_row
 
         if self.mode == "videos":
             # Open video
