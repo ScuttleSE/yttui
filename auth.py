@@ -67,27 +67,34 @@ def get_authenticated_service_multi_account(account_manager: AccountManager) -> 
         # Try to use existing credentials
         creds = account_manager.get_credentials(account)
         if creds and creds.valid:
-            try:
-                service = build('youtube', 'v3', credentials=creds)
-                return service, account
-            except Exception as e:
-                raise AuthenticationError(f"Failed to build YouTube service: {e}")
+            # Check if scopes match
+            if creds.scopes and set(creds.scopes) != set(SCOPES):
+                print(f"Warning: Token scopes changed, need to re-authenticate...")
+                # Scopes changed, need to re-authenticate
+                creds = None
+            else:
+                try:
+                    service = build('youtube', 'v3', credentials=creds)
+                    return service, account
+                except Exception as e:
+                    print(f"Failed to build service with existing creds: {e}")
+                    creds = None
 
-    # No valid account, need to authenticate
-    result = account_manager.authenticate_new_account()
-    if not result:
-        raise AuthenticationError("Failed to authenticate new account")
-
-    account, creds = result
-
-    # Set as active
-    account_manager.switch_account(account.id)
-
+    # No valid account or scopes changed, need to authenticate
     try:
+        result = account_manager.authenticate_new_account()
+        if not result:
+            raise AuthenticationError("Failed to authenticate new account")
+
+        account, creds = result
+
+        # Set as active
+        account_manager.switch_account(account.id)
+
         service = build('youtube', 'v3', credentials=creds)
         return service, account
     except Exception as e:
-        raise AuthenticationError(f"Failed to build YouTube service: {e}")
+        raise AuthenticationError(f"Failed to authenticate new account: {e}")
 
 
 def get_authenticated_service_legacy():

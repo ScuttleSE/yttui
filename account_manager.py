@@ -164,6 +164,20 @@ class AccountManager:
             with open(token_path, 'rb') as f:
                 creds = pickle.load(f)
 
+            # Check if scopes match current requirements
+            if creds and creds.scopes:
+                # Normalize scopes (remove openid if auto-added)
+                current_scopes = set(SCOPES)
+                token_scopes = set(creds.scopes) - {'openid'}
+
+                if token_scopes != current_scopes:
+                    print(f"Token scopes mismatch. Deleting old token...")
+                    print(f"  Expected: {sorted(current_scopes)}")
+                    print(f"  Got: {sorted(token_scopes)}")
+                    # Delete incompatible token
+                    token_path.unlink()
+                    return None
+
             # Refresh if expired
             if creds and creds.expired and creds.refresh_token:
                 try:
@@ -173,10 +187,17 @@ class AccountManager:
                         pickle.dump(creds, f)
                 except Exception as e:
                     print(f"Failed to refresh credentials: {e}")
+                    # Delete failed token
+                    if token_path.exists():
+                        token_path.unlink()
                     return None
 
             return creds
-        except (pickle.PickleError, IOError):
+        except (pickle.PickleError, IOError, Exception) as e:
+            print(f"Error loading credentials: {e}")
+            # Delete corrupted token
+            if token_path.exists():
+                token_path.unlink()
             return None
 
     def authenticate_new_account(self) -> Optional[tuple[Account, Credentials]]:

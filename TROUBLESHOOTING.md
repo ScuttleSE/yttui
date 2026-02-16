@@ -56,6 +56,26 @@ rm ~/.config/yt-tui/token.json
 python main.py
 ```
 
+### Error: "Scope has changed" or "Failed to authenticate new account"
+
+**Cause**: OAuth scopes changed (upgrading to multi-account support).
+
+**Solution**:
+```bash
+# Quick fix - delete all old tokens
+rm ~/.config/yt-tui/token*.json
+
+# Or use migration script
+python migrate_tokens.py
+
+# Then re-authenticate
+python main.py
+```
+
+**Why this happens**: Multi-account support requires additional OAuth scopes (userinfo.email and userinfo.profile) to display your account name. Old tokens don't have these scopes and must be replaced.
+
+**What to expect**: Browser will open asking for the new permissions. These are READ-ONLY and only used to show your name/email in the app.
+
 ### Error: "API quota exceeded"
 
 **Cause**: Daily API limit reached (10,000 units).
