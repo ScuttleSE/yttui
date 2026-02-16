@@ -66,6 +66,11 @@ source venv/bin/activate  # On Linux/Mac
 pip install -r requirements.txt
 ```
 
+**Note**: If you encounter version issues, try using the latest compatible versions:
+```bash
+pip install -r requirements-latest.txt
+```
+
 ### Step 4: Set up YouTube API credentials
 
 This is the most important step! You need to create OAuth2 credentials to access YouTube API.

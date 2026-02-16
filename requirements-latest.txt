@@ -1,0 +1,14 @@
+# YouTube API dependencies
+google-api-python-client>=2.100.0
+google-auth>=2.20.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.2.0
+
+# TUI framework (latest stable)
+textual>=0.70.0
+
+# Additional dependencies
+rich>=13.0.0
+httplib2>=0.22.0
+uritemplate>=4.1.1
+isodate>=0.6.1
