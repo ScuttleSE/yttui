@@ -346,35 +346,80 @@ class YouTubeAPI:
 
     def get_my_channels(self) -> List[Dict[str, Any]]:
         """
-        Get all channels owned by the authenticated user.
+        Get all channels owned by or managed by the authenticated user.
 
         Returns:
             List of channel dictionaries with metadata
         """
         try:
-            request = self.service.channels().list(
-                part="snippet,contentDetails,statistics",
-                mine=True
-            )
-            response = request.execute()
-
             channels = []
-            for item in response.get('items', []):
-                snippet = item['snippet']
-                statistics = item.get('statistics', {})
+            page_token = None
 
-                channels.append({
-                    'id': item['id'],
-                    'title': snippet['title'],
-                    'description': snippet.get('description', '')[:200],
-                    'custom_url': snippet.get('customUrl', ''),
-                    'thumbnail': snippet['thumbnails']['default']['url'],
-                    'subscriber_count': self._format_number(int(statistics.get('subscriberCount', 0))),
-                    'video_count': statistics.get('videoCount', 0),
-                    'view_count': self._format_number(int(statistics.get('viewCount', 0))),
-                    'published_at': self._parse_date(snippet['publishedAt']),
-                    'url': f"https://www.youtube.com/channel/{item['id']}"
-                })
+            # Fetch all pages of owned channels
+            while True:
+                request = self.service.channels().list(
+                    part="snippet,contentDetails,statistics",
+                    mine=True,
+                    maxResults=50,
+                    pageToken=page_token
+                )
+                response = request.execute()
+
+                for item in response.get('items', []):
+                    snippet = item['snippet']
+                    statistics = item.get('statistics', {})
+
+                    channels.append({
+                        'id': item['id'],
+                        'title': snippet['title'],
+                        'description': snippet.get('description', '')[:200],
+                        'custom_url': snippet.get('customUrl', ''),
+                        'thumbnail': snippet['thumbnails']['default']['url'],
+                        'subscriber_count': self._format_number(int(statistics.get('subscriberCount', 0))),
+                        'video_count': statistics.get('videoCount', 0),
+                        'view_count': self._format_number(int(statistics.get('viewCount', 0))),
+                        'published_at': self._parse_date(snippet['publishedAt']),
+                        'url': f"https://www.youtube.com/channel/{item['id']}"
+                    })
+
+                page_token = response.get('nextPageToken')
+                if not page_token:
+                    break
+
+            # Also try to get channels the user manages (brand channels, etc.)
+            # This requires checking channel memberships
+            try:
+                # Get channels by looking at subscriptions management permissions
+                # Note: This is a workaround as there's no direct "managed channels" API
+                mgmt_request = self.service.channels().list(
+                    part="snippet,contentDetails,statistics",
+                    managedByMe=True,
+                    maxResults=50
+                )
+                mgmt_response = mgmt_request.execute()
+
+                for item in mgmt_response.get('items', []):
+                    # Check if we already have this channel
+                    channel_id = item['id']
+                    if not any(ch['id'] == channel_id for ch in channels):
+                        snippet = item['snippet']
+                        statistics = item.get('statistics', {})
+
+                        channels.append({
+                            'id': item['id'],
+                            'title': snippet['title'],
+                            'description': snippet.get('description', '')[:200],
+                            'custom_url': snippet.get('customUrl', ''),
+                            'thumbnail': snippet['thumbnails']['default']['url'],
+                            'subscriber_count': self._format_number(int(statistics.get('subscriberCount', 0))),
+                            'video_count': statistics.get('videoCount', 0),
+                            'view_count': self._format_number(int(statistics.get('viewCount', 0))),
+                            'published_at': self._parse_date(snippet['publishedAt']),
+                            'url': f"https://www.youtube.com/channel/{item['id']}"
+                        })
+            except:
+                # managedByMe might not be available for all accounts
+                pass
 
             return channels
 
