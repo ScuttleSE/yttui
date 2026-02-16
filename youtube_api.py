@@ -351,11 +351,25 @@ class YouTubeAPI:
         Returns:
             List of channel dictionaries with metadata
         """
+        # Log to file since TUI takes over screen
+        import os
+        log_file = os.path.expanduser("~/.config/yt-tui/channels_debug.log")
+
+        def log(msg):
+            try:
+                with open(log_file, 'a') as f:
+                    from datetime import datetime
+                    f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
+            except:
+                pass
+
         try:
             channels = []
             page_token = None
 
-            print("DEBUG: Fetching channels with mine=True...")
+            log("=" * 60)
+            log("Starting channel fetch...")
+            log(f"Fetching channels with mine=True...")
 
             # Fetch all pages of owned channels
             while True:
@@ -367,14 +381,15 @@ class YouTubeAPI:
                 )
                 response = request.execute()
 
-                print(f"DEBUG: Got {len(response.get('items', []))} channels from mine=True")
-                print(f"DEBUG: Response has nextPageToken: {response.get('nextPageToken') is not None}")
+                num_items = len(response.get('items', []))
+                log(f"Got {num_items} channels from mine=True")
+                log(f"Response has nextPageToken: {response.get('nextPageToken') is not None}")
 
                 for item in response.get('items', []):
                     snippet = item['snippet']
                     statistics = item.get('statistics', {})
 
-                    print(f"DEBUG: Found channel: {snippet['title']} (ID: {item['id']})")
+                    log(f"Found channel: {snippet['title']} (ID: {item['id']})")
 
                     channels.append({
                         'id': item['id'],
@@ -393,11 +408,11 @@ class YouTubeAPI:
                 if not page_token:
                     break
 
-            print(f"DEBUG: Total channels from mine=True: {len(channels)}")
+            log(f"Total channels from mine=True: {len(channels)}")
 
             # Also try to get channels the user manages (brand channels, etc.)
             try:
-                print("DEBUG: Trying managedByMe=True...")
+                log("Trying managedByMe=True...")
                 mgmt_request = self.service.channels().list(
                     part="snippet,contentDetails,statistics",
                     managedByMe=True,
@@ -405,13 +420,14 @@ class YouTubeAPI:
                 )
                 mgmt_response = mgmt_request.execute()
 
-                print(f"DEBUG: Got {len(mgmt_response.get('items', []))} channels from managedByMe=True")
+                num_managed = len(mgmt_response.get('items', []))
+                log(f"Got {num_managed} channels from managedByMe=True")
 
                 for item in mgmt_response.get('items', []):
                     channel_id = item['id']
                     snippet = item['snippet']
 
-                    print(f"DEBUG: Found managed channel: {snippet['title']} (ID: {channel_id})")
+                    log(f"Found managed channel: {snippet['title']} (ID: {channel_id})")
 
                     # Check if we already have this channel
                     if not any(ch['id'] == channel_id for ch in channels):
@@ -430,16 +446,18 @@ class YouTubeAPI:
                             'url': f"https://www.youtube.com/channel/{item['id']}"
                         })
                     else:
-                        print(f"DEBUG: Channel {channel_id} already in list, skipping")
+                        log(f"Channel {channel_id} already in list, skipping")
             except Exception as e:
-                print(f"DEBUG: managedByMe failed: {e}")
+                log(f"managedByMe failed: {e}")
                 # managedByMe might not be available for all accounts
                 pass
 
-            print(f"DEBUG: Final total channels: {len(channels)}")
+            log(f"Final total channels: {len(channels)}")
+            log("=" * 60)
             return channels
 
         except HttpError as e:
+            log(f"HTTP Error: {e}")
             if e.resp.status == 403:
                 raise YouTubeAPIError("API quota exceeded or insufficient permissions.")
             raise YouTubeAPIError(f"Failed to get channels: {e}")
