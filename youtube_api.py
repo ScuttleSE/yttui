@@ -149,34 +149,91 @@ class YouTubeAPI:
         Returns:
             List of video dictionaries
         """
+        from datetime import datetime, timedelta
+
         try:
-            request = self.service.activities().list(
-                part="snippet,contentDetails",
-                mine=True,
-                maxResults=max_results
-            )
-            response = request.execute()
+            # Get ALL subscribed channels (paginate through all)
+            all_subscriptions = []
+            page_token = None
 
-            videos = []
-            video_ids = []
+            while True:
+                subs_request = self.service.subscriptions().list(
+                    part="snippet",
+                    mine=True,
+                    maxResults=50,
+                    pageToken=page_token
+                )
+                subs_response = subs_request.execute()
 
-            for item in response.get('items', []):
-                if item['snippet']['type'] == 'upload':
-                    video_id = item['contentDetails']['upload']['videoId']
-                    video_ids.append(video_id)
+                for item in subs_response.get('items', []):
+                    all_subscriptions.append({
+                        'channel_id': item['snippet']['resourceId']['channelId'],
+                        'title': item['snippet']['title']
+                    })
+
+                page_token = subs_response.get('nextPageToken')
+                if not page_token:
+                    break
+
+            if not all_subscriptions:
+                return []
+
+            video_ids = set()
+
+            # Get 1-2 recent videos from each channel until we have enough
+            # Process channels in order, getting recent uploads from each
+            for sub in all_subscriptions:
+                if len(video_ids) >= max_results:
+                    break
+
+                channel_id = sub['channel_id']
+
+                try:
+                    # Get the most recent upload from this channel
+                    search_request = self.service.search().list(
+                        part="snippet",
+                        channelId=channel_id,
+                        type="video",
+                        order="date",
+                        maxResults=2,  # Get 2 most recent videos per channel
+                        publishedAfter=(datetime.now() - timedelta(days=30)).isoformat() + 'Z'  # Last 30 days
+                    )
+                    search_response = search_request.execute()
+
+                    for item in search_response.get('items', []):
+                        if len(video_ids) >= max_results:
+                            break
+                        video_id = item['id']['videoId']
+                        if video_id not in video_ids:
+                            video_ids.add(video_id)
+
+                except HttpError:
+                    # Skip channels that error out
+                    continue
 
             if video_ids:
-                # Get full video details
-                videos_request = self.service.videos().list(
-                    part="snippet,contentDetails,statistics",
-                    id=','.join(video_ids)
-                )
-                videos_response = videos_request.execute()
+                # Get full video details for all collected video IDs in batches
+                videos = []
+                video_ids_list = list(video_ids)
 
-                for item in videos_response.get('items', []):
-                    videos.append(self._parse_video(item))
+                # API allows up to 50 IDs per request
+                for i in range(0, len(video_ids_list), 50):
+                    batch = video_ids_list[i:i+50]
+                    videos_request = self.service.videos().list(
+                        part="snippet,contentDetails,statistics",
+                        id=','.join(batch)
+                    )
+                    videos_response = videos_request.execute()
 
-            return videos
+                    for item in videos_response.get('items', []):
+                        videos.append(self._parse_video(item))
+
+                # Sort by published date (most recent first)
+                videos.sort(key=lambda x: x['published_at'], reverse=True)
+
+                return videos[:max_results]
+
+            return []
 
         except HttpError as e:
             if e.resp.status == 403:
