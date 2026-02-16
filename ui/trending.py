@@ -13,6 +13,11 @@ class TrendingScreen(Static):
 
     videos: reactive[list] = reactive([])
 
+    def __init__(self, youtube_api: YouTubeAPI):
+        """Initialize trending screen."""
+        super().__init__()
+        self.youtube = youtube_api
+
     def compose(self) -> ComposeResult:
         """Compose the trending screen."""
         with Vertical():
@@ -35,7 +40,7 @@ class TrendingScreen(Static):
         table.add_row("Loading trending videos...", "", "", "", "")
 
         try:
-            results = self.app.youtube.get_trending_videos(max_results=25)
+            results = self.youtube.get_trending_videos(max_results=25)
             self.videos = results
 
             table.clear()

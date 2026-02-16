@@ -15,6 +15,11 @@ class SubscriptionsScreen(Static):
     subscriptions: reactive[list] = reactive([])
     videos: reactive[list] = reactive([])
 
+    def __init__(self, youtube_api: YouTubeAPI):
+        """Initialize subscriptions screen."""
+        super().__init__()
+        self.youtube = youtube_api
+
     def compose(self) -> ComposeResult:
         """Compose the subscriptions screen."""
         with Vertical():
@@ -71,7 +76,7 @@ class SubscriptionsScreen(Static):
         table.add_row("Loading subscriptions...", "", "")
 
         try:
-            results = self.app.youtube.get_subscriptions(max_results=50)
+            results = self.youtube.get_subscriptions(max_results=50)
             self.subscriptions = results
 
             table.clear()
@@ -102,7 +107,7 @@ class SubscriptionsScreen(Static):
         table.add_row("Loading videos from subscriptions...", "", "", "", "")
 
         try:
-            results = self.app.youtube.get_subscription_videos(max_results=50)
+            results = self.youtube.get_subscription_videos(max_results=50)
             self.videos = results
 
             table.clear()

@@ -14,6 +14,11 @@ class SearchScreen(Static):
     current_query: reactive[str] = reactive("")
     videos: reactive[list] = reactive([])
 
+    def __init__(self, youtube_api: YouTubeAPI):
+        """Initialize search screen."""
+        super().__init__()
+        self.youtube = youtube_api
+
     def compose(self) -> ComposeResult:
         """Compose the search screen."""
         with Vertical():
@@ -60,7 +65,7 @@ class SearchScreen(Static):
 
         try:
             # Perform search
-            results = self.app.youtube.search_videos(query, max_results=25)
+            results = self.youtube.search_videos(query, max_results=25)
             self.videos = results
 
             # Clear table and populate with results

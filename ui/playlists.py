@@ -105,6 +105,11 @@ class PlaylistsScreen(Static):
 
     playlists: reactive[list] = reactive([])
 
+    def __init__(self, youtube_api: YouTubeAPI):
+        """Initialize playlists screen."""
+        super().__init__()
+        self.youtube = youtube_api
+
     def compose(self) -> ComposeResult:
         """Compose the playlists screen."""
         with Vertical():
@@ -128,7 +133,7 @@ class PlaylistsScreen(Static):
         table.add_row("Loading playlists...", "", "", "")
 
         try:
-            results = self.app.youtube.get_playlists(max_results=50)
+            results = self.youtube.get_playlists(max_results=50)
             self.playlists = results
 
             table.clear()
@@ -162,7 +167,7 @@ class PlaylistsScreen(Static):
 
         # Push a new screen to show playlist videos
         screen = PlaylistVideosScreen(
-            self.app.youtube,
+            self.youtube,
             playlist['id'],
             playlist['title']
         )

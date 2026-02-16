@@ -13,6 +13,11 @@ class HistoryScreen(Static):
 
     videos: reactive[list] = reactive([])
 
+    def __init__(self, youtube_api: YouTubeAPI):
+        """Initialize history screen."""
+        super().__init__()
+        self.youtube = youtube_api
+
     def compose(self) -> ComposeResult:
         """Compose the history screen."""
         with Vertical():
@@ -39,7 +44,7 @@ class HistoryScreen(Static):
         table.add_row("Loading history...", "", "", "", "")
 
         try:
-            results = self.app.youtube.get_watch_history(max_results=50)
+            results = self.youtube.get_watch_history(max_results=50)
             self.videos = results
 
             table.clear()
