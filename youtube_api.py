@@ -351,25 +351,9 @@ class YouTubeAPI:
         Returns:
             List of channel dictionaries with metadata
         """
-        # Log to file since TUI takes over screen
-        import os
-        log_file = os.path.expanduser("~/.config/yt-tui/channels_debug.log")
-
-        def log(msg):
-            try:
-                with open(log_file, 'a') as f:
-                    from datetime import datetime
-                    f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
-            except:
-                pass
-
         try:
             channels = []
             page_token = None
-
-            log("=" * 60)
-            log("Starting channel fetch...")
-            log(f"Fetching channels with mine=True...")
 
             # Fetch all pages of owned channels
             while True:
@@ -381,15 +365,9 @@ class YouTubeAPI:
                 )
                 response = request.execute()
 
-                num_items = len(response.get('items', []))
-                log(f"Got {num_items} channels from mine=True")
-                log(f"Response has nextPageToken: {response.get('nextPageToken') is not None}")
-
                 for item in response.get('items', []):
                     snippet = item['snippet']
                     statistics = item.get('statistics', {})
-
-                    log(f"Found channel: {snippet['title']} (ID: {item['id']})")
 
                     channels.append({
                         'id': item['id'],
@@ -408,29 +386,46 @@ class YouTubeAPI:
                 if not page_token:
                     break
 
-            log(f"Total channels from mine=True: {len(channels)}")
-
-            # Also try to get channels the user manages (brand channels, etc.)
+            # Try to get content owner ID and fetch managed channels
+            # This is needed for brand channels to appear
             try:
-                log("Trying managedByMe=True...")
-                mgmt_request = self.service.channels().list(
-                    part="snippet,contentDetails,statistics",
-                    managedByMe=True,
-                    maxResults=50
-                )
-                mgmt_response = mgmt_request.execute()
+                # First, try to get the content owner ID from channel details
+                content_owner_id = None
+                if channels:
+                    # Get detailed info for first channel to find content owner
+                    channel_details = self.service.channels().list(
+                        part="contentOwnerDetails",
+                        id=channels[0]['id']
+                    ).execute()
 
-                num_managed = len(mgmt_response.get('items', []))
-                log(f"Got {num_managed} channels from managedByMe=True")
+                    if channel_details.get('items'):
+                        content_owner_details = channel_details['items'][0].get('contentOwnerDetails', {})
+                        content_owner_id = content_owner_details.get('contentOwner')
+
+                # Now try managedByMe with content owner ID if available
+                if content_owner_id:
+                    mgmt_request = self.service.channels().list(
+                        part="snippet,contentDetails,statistics",
+                        managedByMe=True,
+                        onBehalfOfContentOwner=content_owner_id,
+                        maxResults=50
+                    )
+                else:
+                    # Try without content owner ID
+                    mgmt_request = self.service.channels().list(
+                        part="snippet,contentDetails,statistics",
+                        managedByMe=True,
+                        maxResults=50
+                    )
+
+                mgmt_response = mgmt_request.execute()
 
                 for item in mgmt_response.get('items', []):
                     channel_id = item['id']
-                    snippet = item['snippet']
-
-                    log(f"Found managed channel: {snippet['title']} (ID: {channel_id})")
 
                     # Check if we already have this channel
                     if not any(ch['id'] == channel_id for ch in channels):
+                        snippet = item['snippet']
                         statistics = item.get('statistics', {})
 
                         channels.append({
@@ -445,19 +440,13 @@ class YouTubeAPI:
                             'published_at': self._parse_date(snippet['publishedAt']),
                             'url': f"https://www.youtube.com/channel/{item['id']}"
                         })
-                    else:
-                        log(f"Channel {channel_id} already in list, skipping")
-            except Exception as e:
-                log(f"managedByMe failed: {e}")
-                # managedByMe might not be available for all accounts
+            except:
+                # managedByMe may fail due to API limitations or permissions
                 pass
 
-            log(f"Final total channels: {len(channels)}")
-            log("=" * 60)
             return channels
 
         except HttpError as e:
-            log(f"HTTP Error: {e}")
             if e.resp.status == 403:
                 raise YouTubeAPIError("API quota exceeded or insufficient permissions.")
             raise YouTubeAPIError(f"Failed to get channels: {e}")
