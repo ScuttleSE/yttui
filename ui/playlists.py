@@ -87,10 +87,14 @@ class PlaylistVideosScreen(Screen):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection - open video in browser."""
-        if not self.videos or event.row_key.value >= len(self.videos):
+        if not self.videos or event.row_key.value is None:
             return
 
-        video = self.videos[event.row_key.value]
+        row_index = event.row_key.value
+        if row_index >= len(self.videos):
+            return
+
+        video = self.videos[row_index]
         url = video['url']
 
         try:
@@ -160,10 +164,14 @@ class PlaylistsScreen(Static):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection - show playlist videos."""
-        if not self.playlists or event.row_key.value >= len(self.playlists):
+        if not self.playlists or event.row_key.value is None:
             return
 
-        playlist = self.playlists[event.row_key.value]
+        row_index = event.row_key.value
+        if row_index >= len(self.playlists):
+            return
+
+        playlist = self.playlists[row_index]
 
         # Push a new screen to show playlist videos
         screen = PlaylistVideosScreen(

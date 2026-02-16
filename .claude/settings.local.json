@@ -5,7 +5,9 @@
       "Bash(tree:*)",
       "Bash(python3 -m py_compile:*)",
       "Bash(wc:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

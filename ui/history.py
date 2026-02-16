@@ -72,10 +72,14 @@ class HistoryScreen(Static):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection - open video in browser."""
-        if not self.videos or event.row_key.value >= len(self.videos):
+        if not self.videos or event.row_key.value is None:
             return
 
-        video = self.videos[event.row_key.value]
+        row_index = event.row_key.value
+        if row_index >= len(self.videos):
+            return
+
+        video = self.videos[row_index]
         url = video['url']
 
         try:

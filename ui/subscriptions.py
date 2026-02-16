@@ -134,12 +134,17 @@ class SubscriptionsScreen(Static):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection."""
+        if event.row_key.value is None:
+            return
+
+        row_index = event.row_key.value
+
         if self.mode == "videos":
             # Open video
-            if not self.videos or event.row_key.value >= len(self.videos):
+            if not self.videos or row_index >= len(self.videos):
                 return
 
-            video = self.videos[event.row_key.value]
+            video = self.videos[row_index]
             url = video['url']
 
             try:
@@ -149,10 +154,10 @@ class SubscriptionsScreen(Static):
                 self.app.notify(f"Failed to open browser: {e}", severity="error")
         else:
             # Open channel
-            if not self.subscriptions or event.row_key.value >= len(self.subscriptions):
+            if not self.subscriptions or row_index >= len(self.subscriptions):
                 return
 
-            channel = self.subscriptions[event.row_key.value]
+            channel = self.subscriptions[row_index]
             url = f"https://www.youtube.com/channel/{channel['channel_id']}"
 
             try:
