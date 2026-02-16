@@ -1,20 +1,23 @@
-"""OAuth2 authentication for YouTube API."""
+"""OAuth2 authentication for YouTube API with multi-account support."""
 import os
 import pickle
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from config import TOKEN_FILE, get_client_secret_path
+from config import TOKEN_FILE, get_client_secret_path, CONFIG_DIR
+from account_manager import AccountManager, Account
 
 # OAuth2 scopes required for the app
 SCOPES = [
     'https://www.googleapis.com/auth/youtube.readonly',
-    'https://www.googleapis.com/auth/youtube.force-ssl'
+    'https://www.googleapis.com/auth/youtube.force-ssl',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile'
 ]
 
 
@@ -23,9 +26,73 @@ class AuthenticationError(Exception):
     pass
 
 
-def get_authenticated_service():
+def get_authenticated_service(account_manager: Optional[AccountManager] = None):
     """
-    Authenticate with YouTube API using OAuth2.
+    Authenticate with YouTube API using OAuth2 with multi-account support.
+
+    Args:
+        account_manager: Optional AccountManager instance for multi-account support
+
+    Returns:
+        Tuple of (YouTube API service object, Account or None)
+
+    Raises:
+        AuthenticationError: If authentication fails.
+    """
+    # Use multi-account system if available
+    if account_manager:
+        return get_authenticated_service_multi_account(account_manager)
+
+    # Fallback to legacy single-account system
+    return get_authenticated_service_legacy(), None
+
+
+def get_authenticated_service_multi_account(account_manager: AccountManager) -> Tuple:
+    """
+    Authenticate using multi-account system.
+
+    Args:
+        account_manager: AccountManager instance
+
+    Returns:
+        Tuple of (YouTube API service, Account)
+
+    Raises:
+        AuthenticationError: If authentication fails.
+    """
+    # Get active account
+    account = account_manager.ensure_active_account()
+
+    if account:
+        # Try to use existing credentials
+        creds = account_manager.get_credentials(account)
+        if creds and creds.valid:
+            try:
+                service = build('youtube', 'v3', credentials=creds)
+                return service, account
+            except Exception as e:
+                raise AuthenticationError(f"Failed to build YouTube service: {e}")
+
+    # No valid account, need to authenticate
+    result = account_manager.authenticate_new_account()
+    if not result:
+        raise AuthenticationError("Failed to authenticate new account")
+
+    account, creds = result
+
+    # Set as active
+    account_manager.switch_account(account.id)
+
+    try:
+        service = build('youtube', 'v3', credentials=creds)
+        return service, account
+    except Exception as e:
+        raise AuthenticationError(f"Failed to build YouTube service: {e}")
+
+
+def get_authenticated_service_legacy():
+    """
+    Legacy single-account authentication (backwards compatibility).
 
     Returns:
         Authenticated YouTube API service object.
@@ -81,8 +148,24 @@ def get_authenticated_service():
         raise AuthenticationError(f"Failed to build YouTube service: {e}")
 
 
-def is_authenticated() -> bool:
-    """Check if user is authenticated."""
+def is_authenticated(account_manager: Optional[AccountManager] = None) -> bool:
+    """
+    Check if user is authenticated.
+
+    Args:
+        account_manager: Optional AccountManager for multi-account check
+
+    Returns:
+        True if authenticated, False otherwise
+    """
+    if account_manager:
+        account = account_manager.get_active_account()
+        if not account:
+            return False
+        creds = account_manager.get_credentials(account)
+        return creds is not None and creds.valid
+
+    # Legacy check
     if not TOKEN_FILE.exists():
         return False
 
@@ -95,6 +178,6 @@ def is_authenticated() -> bool:
 
 
 def clear_credentials():
-    """Clear saved credentials."""
+    """Clear saved credentials (legacy)."""
     if TOKEN_FILE.exists():
         TOKEN_FILE.unlink()

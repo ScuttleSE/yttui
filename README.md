@@ -14,6 +14,7 @@ A modern, feature-rich Text User Interface (TUI) YouTube client for the Linux te
 - 🕐 **History** - Access your watch history (limited API access)
 - 🌐 **Browser Integration** - Opens videos in your default web browser
 - 🔐 **OAuth2 Authentication** - Secure authentication with YouTube
+- 👥 **Multi-Account Support** - Switch between multiple YouTube accounts (NEW!)
 - ⌨️ **Keyboard Navigation** - Full keyboard control
 - 🎨 **Modern UI** - Built with the Textual framework
 

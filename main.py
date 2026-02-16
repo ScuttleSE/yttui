@@ -10,6 +10,7 @@ from auth import get_authenticated_service, AuthenticationError, is_authenticate
 from youtube_api import YouTubeAPI
 from ui.app import YouTubeApp
 from config import ensure_config_dir, get_client_secret_path
+from account_manager import AccountManager
 
 
 def print_setup_instructions():
@@ -53,18 +54,23 @@ def main():
         sys.exit(1)
 
     print("Authenticating with YouTube...")
-    print("A browser window will open for authentication.\n")
+    print("A browser window will open for authentication if needed.\n")
 
     try:
+        # Initialize account manager
+        account_manager = AccountManager()
+
         # Authenticate and get YouTube service
-        youtube_service = get_authenticated_service()
+        youtube_service, account = get_authenticated_service(account_manager)
         youtube_api = YouTubeAPI(youtube_service)
 
         print("✓ Authentication successful!")
+        if account:
+            print(f"✓ Logged in as: {account.name} ({account.email})")
         print("Starting YT-TUI...\n")
 
-        # Run the app
-        app = YouTubeApp(youtube_api)
+        # Run the app with account manager
+        app = YouTubeApp(youtube_api, account_manager)
         app.run()
 
     except AuthenticationError as e:
