@@ -13,7 +13,9 @@ from config import TOKEN_FILE, get_client_secret_path, CONFIG_DIR
 from account_manager import AccountManager, Account
 
 # OAuth2 scopes required for the app
+# Note: 'openid' is automatically added by Google when requesting userinfo scopes
 SCOPES = [
+    'openid',
     'https://www.googleapis.com/auth/youtube.readonly',
     'https://www.googleapis.com/auth/youtube.force-ssl',
     'https://www.googleapis.com/auth/userinfo.email',
